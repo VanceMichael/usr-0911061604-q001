@@ -1,3 +1,6 @@
 .env
 *.local
 data/
+go.work
+go.work.sum
+.tools/

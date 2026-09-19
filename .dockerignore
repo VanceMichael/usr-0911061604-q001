@@ -1,0 +1,13 @@
+# 离线本地验证用的 Go workspace 与替身模块，绝不能进入镜像/构建上下文，
+# 否则 go.work 会让容器构建错误地使用本地 mimetype stub。
+go.work
+go.work.sum
+.tools/
+
+# 常规忽略
+.git
+.env
+*.local
+data/
+README.md
+scripts/
