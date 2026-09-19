@@ -1,13 +1,48 @@
+# 后厨影像证据索引服务的一键编排。
+# 数据持久化在 pgdata 卷中：重启 api 或重建容器后索引仍可查。
 services:
-  app:
+  api:
     build: .
-    ports: ["8080:8080"]
+    ports:
+      - "8080:8080"
     environment:
-      DATABASE_URL: postgres://app:app@postgres:5432/app?sslmode=disable
-      REDIS_URL: redis://redis:6379
-    depends_on: [postgres, redis]
+      HTTP_PORT: "8080"
+      DATABASE_URL: postgres://app:app@postgres:5432/kitchen?sslmode=disable
+      REDIS_ADDR: redis:6379
+      REDIS_STREAM: clip.events
+      REDIS_CONSUMER_GROUP: clip-indexer
+      ENABLE_STREAM_CONSUMER: "true"
+      CLOCK_DRIFT_TOLERANCE: 5m
+      MAX_BACKFILL_AGE: 168h
+      GIN_MODE: release
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
   postgres:
     image: postgres:17-alpine
-    environment: {POSTGRES_USER: app, POSTGRES_PASSWORD: app, POSTGRES_DB: app}
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: kitchen
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d kitchen"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
   redis:
     image: redis:8-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  pgdata:
